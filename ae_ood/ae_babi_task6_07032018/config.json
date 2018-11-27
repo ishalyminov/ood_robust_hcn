@@ -1,0 +1,1 @@
+{"max_vocabulary_size": 10000, "embedding_size": 128, "max_sequence_length": 60, "nb_epoch": 100, "optimizer": "AdamOptimizer", "vocabulary_size": 526, "batch_size": 32, "learning_rate": 0.01, "rnn_cell": "LSTMCell", "early_stopping_threshold": 10}

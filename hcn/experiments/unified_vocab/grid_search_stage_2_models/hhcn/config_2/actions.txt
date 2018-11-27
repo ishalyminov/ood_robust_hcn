@@ -1,0 +1,60 @@
+_PAD
+Hello , welcome to the Cambridge restaurant system . You can ask for restaurants by area , price range or food type . How may I help you
+api_call $cuisine $location $price
+$name is a nice restaurant in the $location of town in the $price price range
+You are looking for a restaurant is that right
+you are welcome
+What kind of food would you like
+What part of town do you have in mind
+Sorry there is no $cuisine restaurant in the $price price range
+UNK__
+$name is a nice restaurant in the $location of town serving $cuisine food
+Sure , $name is on $address
+The phone number of $name is $phone
+I am sorry but there is no $cuisine restaurant that matches your request
+$name is a great restaurant serving $cuisine food and it is in the $price price range
+$name serves $cuisine food
+$name is in the $price price range
+Sorry there is no $cuisine restaurant in the $location of town
+Can I help you with anything else
+Sorry there is no $price restaurant in the $location of town serving $cuisine food
+$name is a great restaurant
+Would you like something in the cheap , moderate , or expensive price range
+The post code of $name is $post_code
+$name is a nice place in the $location of town
+The price range at $name is $price
+There are restaurants serving $cuisine food . What area do you want
+$name is on $address
+There are restaurants serving $cuisine in the $price price range . What area would you like
+$name is in the $location part of town
+There are restaurants . That area would you like
+There are restaurants in the $price price range and the $location of town . What type of food would you like
+I'm sorry but there is no restaurant serving $cuisine food
+You are looking for a restaurant serving any kind of food right
+$name is a nice place in the $location of town and the prices are $price
+You are looking for a $cuisine restaurant right
+Let me confirm , You are looking for a restaurant and you dont care about the price range right
+Ok , a restaurant in any part of town is that right
+Did you say you are looking for a restaurant in the $location of town
+I'm sorry but there is no $cuisine restaurant in the $location of town and the $price price range
+Let me confirm , You are looking for a restaurant in the $price price range right
+$name is a great restaurant serving $price $cuisine food in the $location of town
+Sorry but there is no other $cuisine restaurant in the $price price range and the $location of town
+$name serves $cuisine food in the $price price range
+$name is a nice place in the $location of town serving tasty $cuisine food
+Sorry would you like something in the $price price range or in the $price price range
+Sorry but there is no other restaurant in the $price price range and the $location of town
+Sorry would you like something in the $location or in the $location
+I'm sorry but there is no $cuisine restaurant in the $location of town
+Sorry would you like something in the $price price range or you dont care
+I am sorry but there is no other $cuisine restaurant in the $price price range
+I am sorry but there is no other $cuisine restaurant in the $location of town
+I'm sorry but there is no restaurant serving $price $cuisine food
+Sorry would you like $cuisine or $cuisine food
+I am sorry but there is no other $cuisine restaurant that matches your request
+Sorry I am a bit confused ; please tell me again what you are looking for
+Sorry would you like $cuisine food or you dont care
+Sorry would you like the $location of town or you dont care
+Sorry, I can't hear you
+There are restaurants serving $cuisine food . What price range do you want
+Sorry I didn't catch that. Could you please repeat?

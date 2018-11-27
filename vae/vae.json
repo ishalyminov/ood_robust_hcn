@@ -1,0 +1,18 @@
+{
+  "num_sampled": 0,
+  "max_sequence_length": 60,
+  "max_vocabulary_size": 10000,
+  "word_dropout_rate": 0.25,
+  "optimizer": "AdamOptimizer",
+  "learning_rate": 0.001,
+  "batch_size": 32,
+  "embedding_dim": 256,
+  "rnn_size": 200,
+  "beam_width": 1,
+  "clip_norm": 5.0,
+  "latent_size": 64,
+  "anneal_max": 1.0,
+  "anneal_bias": 6000,
+  "num_epoch": 10000,
+  "early_stopping_threshold": 50
+}

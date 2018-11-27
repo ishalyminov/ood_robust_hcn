@@ -1,0 +1,5 @@
+{
+  "backoff_utterance": "Sorry I didn't catch that. Could you please repeat?",
+  "ood_prob": 0.2,
+  "ood_continuation_prob": 0.4
+}

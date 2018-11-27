@@ -1,0 +1,4 @@
+{
+  "embedding_size": [64, 128],
+  "latent_size": [8, 16]
+}
