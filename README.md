@@ -6,6 +6,8 @@ Code for paper "Improving Robustness of Dialog Systems in a Data-Efficient Way w
 
 HCN implementation is based on https://github.com/johndpope/hcn
 
+Data coming soon!
+
 OOD data generation
 ==
 bAbI Dialog Task 6 augmentation:
