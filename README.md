@@ -2,7 +2,7 @@
  
 A suite of methods for improving robustness of task-oriented dialogue models.
 
-Code for paper "Improving Robustness of Dialog Systems in a Data-Efficient Way with Turn Dropout" by [Igor Shalyminov](https://github.com/ishalyminov) and [Sungjin Lee](https://www.microsoft.com/en-us/research/people/sule/). [[Paper]](https://arxiv.org/abs/1811.12148) [[Poster]](https://drive.google.com/file/d/1c6Kd3aGwaEj4tgyElIe1dYgAwM-B9aRd/view?usp=sharing)
+Code for paper "Improving Robustness of Dialog Systems in a Data-Efficient Way with Turn Dropout" by [Igor Shalyminov](https://github.com/ishalyminov) and [Sungjin Lee](https://www.linkedin.com/in/sungjinlee/). [[Paper - presented at ConvAI Workshop@NeurIPS 2018]](https://arxiv.org/abs/1811.12148) [[Poster]](https://drive.google.com/file/d/1c6Kd3aGwaEj4tgyElIe1dYgAwM-B9aRd/view?usp=sharing)
 
 HCN implementation is based on https://github.com/johndpope/hcn
 
