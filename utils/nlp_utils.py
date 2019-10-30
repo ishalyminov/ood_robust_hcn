@@ -2,6 +2,7 @@ import logging
 import os
 import subprocess
 
+import requests
 import spacy
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
@@ -10,7 +11,7 @@ logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-MODEL_NAME = 'en_core_web_lg'
+MODEL_NAME = 'en_core_web_sm'
 
 nltk.download('vader_lexicon')
 SENT = SentimentIntensityAnalyzer()
@@ -18,7 +19,8 @@ SENT = SentimentIntensityAnalyzer()
 try:
     logging.info('Initializing SpaCy NLP')
     MODEL = spacy.load(MODEL_NAME)
-except RuntimeError as e:
+except OSError as e:
+    logger.info('downloading spacy model')
     subprocess.call(('python -m spacy download {}'.format(MODEL_NAME)).split())
     MODEL = spacy.load(MODEL_NAME)
 finally:
@@ -26,8 +28,13 @@ finally:
 
 PROFANITY_BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'bad-words.txt')
 
+if not os.path.exists(PROFANITY_BLACKLIST_FILE):
+    r = requests.get('https://www.cs.cmu.edu/~biglou/resources/bad-words.txt')
+    with open(PROFANITY_BLACKLIST_FILE, 'wb') as bad_words_out:
+        bad_words_out.write(r.content)
+
 with open(PROFANITY_BLACKLIST_FILE) as profanity_in:
-    PROFANITY_BLACKLIST = set(map(lambda x: x.strip(), profanity_in.readlines()))
+    PROFANITY_BLACKLIST = set([line.strip() for line in profanity_in.readlines() if len(line.strip())])
 
 POS_TAG_BLACKLIST = set(['PROPN', 'PART'])
 

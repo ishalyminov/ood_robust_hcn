@@ -25,7 +25,7 @@ EMBEDDING = None
 
 
 class UtteranceEmbed(object):
-    DEFAULT_W2V_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'GoogleNews-vectors-negative300.bin')
+    DEFAULT_W2V_FILE = os.path.join(os.path.dirname(__file__), '..', 'hcn', 'data', 'GoogleNews-vectors-negative300.bin')
 
     def __init__(self, in_vocab, fname=DEFAULT_W2V_FILE, dim=300):
         self.vocab = in_vocab

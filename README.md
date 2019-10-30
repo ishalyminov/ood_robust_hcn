@@ -6,16 +6,16 @@ Code for paper "Improving Robustness of Dialog Systems in a Data-Efficient Way w
 
 HCN implementation is based on https://github.com/johndpope/hcn
 
-Data coming soon!
+[Repo with OOD-augmented data](https://github.com/sungjinl/icassp2019-ood-dataset)
 
-OOD data generation
+Setup with Conda
 ==
-bAbI Dialog Task 6 augmentation:
 
-`cd babi_tools; sh make_ood_dataset.sh ../hcn/data ../data/babi_task6_ood_dataset_<parameters>`
+1. `conda create -n ood_robust_hcn python=3.7 tensorflow-gpu==1.14.0`
 
-`ood_augmentation.json` config file will be used which sets the probabilities of OOD sequence start and continuation respectively.
+2. `conda activate ood_robust_hcn`
 
+3. `pip install -r requirements.txt`
 
 Standalone OOD detection
 ==
@@ -41,15 +41,38 @@ Training a VAE:
 
 Evaluating the VAE:
 
-`cd vae; python evaluate_vae_ood.py <model folder> <AE dataset folder>/devset <AE dataset folder>/evalset --decision_type [min/max/avg] --loss_components [kl_loss(,nll_loss)]`
+`cd vae; python evaluate_vae_ood.py <model folder> <AE dataset folder>/devset <AE dataset folder>/evalset --decision_type [min/max/avg] --loss_components [kl_loss(,nll_loss)]``
 
 Dialog control with HCN
 ==
 
-Training:
+0.1 Download word2vec vectors:
 
-`cd hcn; python train.py data ../data/babi_task6_ood_dataset_<parameters> <model folder> config.json --custom_vocab <vocab file>`
+`cd hcn/data; sh get_word2vec.sh`
 
-Evaluation:
+0.2 Initialize the datasets
 
-`cd hcn; python evaluate.py data ../data/babi_task6_ood_dataset_<parameters> <model folder> [clean/noisy]`
+`git submodule update --init`
+
+`cd icassp-ood-dataset; unzip *.zip`
+
+1. Training:
+
+`cd hcn; python train.py data ../icassp-ood-dataset/babi_task6 ../icassp-ood-dataset/babi_task6_ood_0.2_0.4 <model folder> configs/<config-json> [--custom_vocab <vocab file>]`
+
+2. Evaluation:
+
+`cd hcn; python evaluate.py data ../icassp-ood-dataset/babi_task6 ../icassp-ood-dataset/babi_task6_ood_0.2_0.4 <model folder> [clean/noisy]
+
+Custom OOD data generation
+==
+bAbI Dialog Task 6 augmentation:
+
+1. Run the notebooks:
+
+`mining_ood_reddit.ipynb, mining_ood_twitter.ipynb, mining_foreign_domain_ood.ipynb, mining_ood_breakdown.ipynb`
+
+2. `cd babi_tools; sh make_ood_dataset.sh ../hcn/data ../data/babi_task6_ood_dataset_<parameters>`
+
+`ood_augmentation.json` config file will be used which sets the probabilities of OOD sequence start and continuation respectively.
+
