@@ -17,6 +17,27 @@ Setup with Conda
 
 3. `pip install -r requirements.txt`
 
+Dialog control with HCN
+==
+
+0.1 Download word2vec vectors:
+
+`cd hcn/data; sh get_word2vec.sh`
+
+0.2 Initialize the datasets
+
+`git submodule update --init`
+
+`cd icassp-ood-dataset; unzip *.zip`
+
+1. Training:
+
+`cd hcn; python train.py data ../icassp-ood-dataset/babi_task6 ../icassp-ood-dataset/babi_task6_ood_0.2_0.4 <model folder> configs/<config-json> [--custom_vocab <vocab file>]`
+
+2. Evaluation:
+
+`cd hcn; python evaluate.py data ../icassp-ood-dataset/babi_task6 ../icassp-ood-dataset/babi_task6_ood_0.2_0.4 <model folder> [clean/noisy]`
+
 Standalone OOD detection
 ==
 1. Autoencoder-based
@@ -42,27 +63,6 @@ Training a VAE:
 Evaluating the VAE:
 
 `cd vae; python evaluate_vae_ood.py <model folder> <AE dataset folder>/devset <AE dataset folder>/evalset --decision_type [min/max/avg] --loss_components [kl_loss(,nll_loss)]``
-
-Dialog control with HCN
-==
-
-0.1 Download word2vec vectors:
-
-`cd hcn/data; sh get_word2vec.sh`
-
-0.2 Initialize the datasets
-
-`git submodule update --init`
-
-`cd icassp-ood-dataset; unzip *.zip`
-
-1. Training:
-
-`cd hcn; python train.py data ../icassp-ood-dataset/babi_task6 ../icassp-ood-dataset/babi_task6_ood_0.2_0.4 <model folder> configs/<config-json> [--custom_vocab <vocab file>]`
-
-2. Evaluation:
-
-`cd hcn; python evaluate.py data ../icassp-ood-dataset/babi_task6 ../icassp-ood-dataset/babi_task6_ood_0.2_0.4 <model folder> [clean/noisy]
 
 Custom OOD data generation
 ==
