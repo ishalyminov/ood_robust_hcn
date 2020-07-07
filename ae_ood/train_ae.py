@@ -9,7 +9,7 @@ import tensorflow as tf
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from compatible_rnn_autoencoder import CompatibleRNNAutoencoder
-from utils.preprocessing import PAD, START, UNK, EOS, make_vocabulary, make_variational_autoencoder_dataset, load_txt
+from utils.preprocessing import PAD, START, UNK, EOS, make_vocabulary, load_txt
 from utils.training_utils import batch_generator
 
 

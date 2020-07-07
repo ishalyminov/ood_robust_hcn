@@ -11,7 +11,7 @@ HCN implementation is based on https://github.com/johndpope/hcn
 Setup with Conda
 ==
 
-1. `conda create -n ood_robust_hcn python=3.7 tensorflow-gpu==1.14.0`
+1. `conda create -n ood_robust_hcn python=3.7 cython tensorflow-gpu==1.14.0`
 
 2. `conda activate ood_robust_hcn`
 
