@@ -1,9 +1,9 @@
 {
   "max_vocabulary_size": 10000,
   "max_sequence_length": 60,
-  "embedding_size": 128,
+  "embedding_size": 512,
   "optimizer": "AdamOptimizer",
-  "rnn_cell": "LSTMCell",
+  "rnn_cell": "GRUCell",
   "learning_rate": 0.001,
   "nb_epoch": 10000,
   "batch_size": 32,
