@@ -141,16 +141,6 @@ def make_dataset(in_dataset, in_vocab, max_sequence_length):
     return sequences_padded, sequence_masks
 
 
-def make_autoencoder_dataset(in_dataset, in_vocab, max_sequence_length):
-    encoder_input_vectorized = vectorize_sequences(in_dataset, in_vocab)
-    decoder_input_vectorized = vectorize_sequences(in_dataset, in_vocab, prepend=[START_ID])
-    decoder_output_vectorized = vectorize_sequences(in_dataset, in_vocab, append=[EOS_ID])
-    encoder_input_padded = pad_sequences(encoder_input_vectorized, max_sequence_length)
-    decoder_input_padded = pad_sequences(decoder_input_vectorized, max_sequence_length)
-    decoder_output_padded = pad_sequences(decoder_output_vectorized, max_sequence_length)
-    return encoder_input_padded, decoder_input_padded, decoder_output_padded
-
-
 def make_variational_autoencoder_dataset(in_dataset, in_vocab, max_sequence_length):
     encoder_input_vectorized = vectorize_sequences(in_dataset, in_vocab)
     decoder_input_vectorized = vectorize_sequences(in_dataset, in_vocab, prepend=[START_ID])

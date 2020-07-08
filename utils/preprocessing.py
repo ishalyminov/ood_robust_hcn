@@ -243,3 +243,13 @@ def generate_word_scramble_turns(in_number, in_min_len, in_max_len, in_dialogs, 
         utterance_bows.append(bow_encoder.encode(' '.join(utterance_dropped_out)))
     return [tf.keras.preprocessing.sequence.pad_sequences(utterance_sequences, maxlen=in_max_len, padding='post'),
             np.array(utterance_bows)]
+
+
+def make_autoencoder_dataset(in_dataset, in_vocab, max_sequence_length):
+    encoder_input_vectorized = vectorize_sequences(in_dataset, in_vocab)
+    decoder_input_vectorized = vectorize_sequences(in_dataset, in_vocab, prepend=[START_ID])
+    decoder_output_vectorized = vectorize_sequences(in_dataset, in_vocab, append=[EOS_ID])
+    encoder_input_padded = pad_sequences(encoder_input_vectorized, max_sequence_length)
+    decoder_input_padded = pad_sequences(decoder_input_vectorized, max_sequence_length)
+    decoder_output_padded = pad_sequences(decoder_output_vectorized, max_sequence_length)
+    return encoder_input_padded, decoder_input_padded, decoder_output_padded
