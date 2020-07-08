@@ -17,6 +17,9 @@ def configure_argument_parser():
     result_parser = ArgumentParser('Autoencoder data generation from a bAbI Dialog Task dataset')
     result_parser.add_argument('babi_folder')
     result_parser.add_argument('result_folder')
+    result_parser.add_argument('--no_ood_evalset',
+                               action='store_true',
+                               help='Skip making an additional evalset with IND/OOD turns')
     return result_parser
 
 
@@ -33,13 +36,19 @@ def extract_agent_utterances(in_dialogues, in_agent_name):
     return utterances
 
 
-def main(in_babi_folder, in_result_folder):
+def main(in_babi_folder, in_result_folder, make_ood_evalset):
     dialogues = load_dataset(in_babi_folder, 'task6-dstc2')
     train, dev, test = list(map(lambda x: extract_agent_utterances(x, 'user'),
                                 dialogues))
     if not os.path.exists(in_result_folder):
         os.makedirs(in_result_folder)
 
+    save_txt(train, os.path.join(in_result_folder, 'trainset.txt'))
+    save_txt(dev, os.path.join(in_result_folder, 'devset.txt'))
+    save_txt(test, os.path.join(in_result_folder, 'testset.txt'))
+
+    if not make_ood_evalset:
+        return
     ood = []
     for key, values in load_ood().items():
         ood += values
@@ -51,12 +60,9 @@ def main(in_babi_folder, in_result_folder):
                             'label': np.concatenate([np.ones([len(unique_test)], dtype=np.int32),
                                                      np.zeros([len(unique_test)], dtype=np.int32)])})
     eval_df.to_json(os.path.join(in_result_folder, 'evalset.json'))
-    save_txt(train, os.path.join(in_result_folder, 'trainset.txt'))
-    save_txt(dev, os.path.join(in_result_folder, 'devset.txt'))
-    save_txt(test, os.path.join(in_result_folder, 'testset.txt'))
 
 
 if __name__ == '__main__':
     parser = configure_argument_parser()
     args = parser.parse_args()
-    main(args.babi_folder, args.result_folder)
+    main(args.babi_folder, args.result_folder, not args.no_ood_evalset)
