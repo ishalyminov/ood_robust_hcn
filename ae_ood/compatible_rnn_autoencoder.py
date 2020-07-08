@@ -21,7 +21,8 @@ class CompatibleRNNAutoencoder(object):
     VOCAB_NAME = 'vocab.txt'
     CONFIG_NAME = 'config.json'
 
-    def __init__(self, config, vocab):
+    def __init__(self, config, vocab, w2v=None):
+        self.initialize_from_w2v(w2v)
         self.build_graph(config, vocab)
 
     def build_graph(self, config, vocab):
@@ -30,27 +31,39 @@ class CompatibleRNNAutoencoder(object):
             self.vocab = vocab
             vocabulary_size = len(vocab)
             embedding_size = self.config['embedding_size']
+            hidden_size = self.config['hidden_size']
+            z_size = self.config['z_size']
             rnn_cell = self.config['rnn_cell']
 
-            self._enc_cell = getattr(tf.contrib.rnn, rnn_cell)(embedding_size)
-            self._dec_cell = getattr(tf.contrib.rnn, rnn_cell)(embedding_size)
+            self._enc_cell = getattr(tf.contrib.rnn, rnn_cell)(hidden_size)
+            self._dec_cell = getattr(tf.contrib.rnn, rnn_cell)(hidden_size)
 
             max_sequence_length = self.config['max_sequence_length']
             with tf.variable_scope('encoder'):
                 self.enc_input = tf.placeholder(tf.int32, [None, max_sequence_length], name='enc_input')
                 self.dec_output = tf.placeholder(tf.int32, [None, max_sequence_length], name='dec_output')
-                embeddings = tf.Variable(tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0),
-                                         name='emb')
+                embeddings = tf.placeholder(tf.int32, [vocabulary_size, embedding_size], name='emb')
+                # tf.Variable(tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0), name='emb')
                 emb = tf.nn.embedding_lookup(embeddings, self.enc_input)
-                self.z_codes, self.enc_state = tf.nn.dynamic_rnn(self._enc_cell, emb, dtype=tf.float32)
+                self.enc_outputs, self.enc_state = tf.nn.dynamic_rnn(self._enc_cell, emb, dtype=tf.float32)
 
+                z_weight = tf.Variable(tf.truncated_normal([hidden_size, z_size], dtype=tf.float32),
+                                       name='z_weight')
+                z_bias = tf.Variable(tf.random_uniform([z_size], -1.0, 1.0),
+                                     name='z_bias')
+                self.z_codes = tf.matmul(self.enc_state, z_weight) + z_bias
             with tf.variable_scope('decoder') as vs:
-                dec_weight_ = tf.Variable(tf.truncated_normal([embedding_size, vocabulary_size], dtype=tf.float32),
+                dec_z_weight = tf.Variable(tf.truncated_normal([z_size, hidden_size], dtype=tf.float32),
+                                           name='dec_z_weight')
+                dec_z_bias = tf.Variable(tf.random_uniform([hidden_size], -1.0, 1.0),
+                                         name='dec_z_bias')
+                dec_state = tf.matmul(self.z_codes, dec_z_weight) + dec_z_bias
+
+                dec_weight_ = tf.Variable(tf.truncated_normal([hidden_size, vocabulary_size], dtype=tf.float32),
                                           name='dec_weight')
                 dec_bias_ = tf.Variable(tf.random_uniform([vocabulary_size], -1.0, 1.0),
                                         name='dec_bias')
 
-                dec_state = self.enc_state
                 self.initial_dec_input = tf.placeholder(tf.float32, [None, embedding_size], name='dec_initial_input')
                 dec_input_ = self.initial_dec_input
                 dec_outputs = []
@@ -99,6 +112,16 @@ class CompatibleRNNAutoencoder(object):
             print('\n'.join(self.vocab), file=vocab_out)
         with open(os.path.join(in_model_folder, CompatibleRNNAutoencoder.CONFIG_NAME), 'w') as config_out:
             json.dump(self.config, config_out)
+
+    def initialize_from_w2v(self, in_w2v):
+        # random at [-1.0, 1.0]
+        self.embedding_matrix = 2.0 * np.random.random((len(self.vocab), self.dim)).astype(np.float32) - 1.0
+
+        if not in_w2v:
+            return
+        for word, idx in self.vocab.items():
+            if word in in_w2v:
+                self.embedding_matrix[idx] = in_w2v_model[word]
 
     @staticmethod
     def load(in_model_folder, in_session):
