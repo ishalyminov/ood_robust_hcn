@@ -22,13 +22,13 @@ class CompatibleRNNAutoencoder(object):
     CONFIG_NAME = 'config.json'
 
     def __init__(self, config, vocab, w2v=None):
+        self.config = config
+        self.vocab = vocab
         self.initialize_from_w2v(w2v)
         self.build_graph(config, vocab)
 
     def build_graph(self, config, vocab):
         with tf.variable_scope('CompatibleRNNAutoencoder'):
-            self.config = config
-            self.vocab = vocab
             vocabulary_size = len(vocab)
             embedding_size = self.config['embedding_size']
             hidden_size = self.config['hidden_size']
@@ -42,9 +42,9 @@ class CompatibleRNNAutoencoder(object):
             with tf.variable_scope('encoder'):
                 self.enc_input = tf.placeholder(tf.int32, [None, max_sequence_length], name='enc_input')
                 self.dec_output = tf.placeholder(tf.int32, [None, max_sequence_length], name='dec_output')
-                embeddings = tf.placeholder(tf.int32, [vocabulary_size, embedding_size], name='emb')
+                self.embeddings = tf.placeholder(tf.float32, [vocabulary_size, embedding_size], name='emb')
                 # tf.Variable(tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0), name='emb')
-                emb = tf.nn.embedding_lookup(embeddings, self.enc_input)
+                emb = tf.nn.embedding_lookup(self.embeddings, self.enc_input)
                 self.enc_outputs, self.enc_state = tf.nn.dynamic_rnn(self._enc_cell, emb, dtype=tf.float32)
 
                 z_weight = tf.Variable(tf.truncated_normal([hidden_size, z_size], dtype=tf.float32),
@@ -73,7 +73,7 @@ class CompatibleRNNAutoencoder(object):
                     dec_output, dec_state = self._dec_cell(dec_input_, dec_state)
                     dec_output = tf.matmul(dec_output, dec_weight_) + dec_bias_
                     dec_outputs.append(dec_output)
-                    dec_input_ = tf.nn.embedding_lookup(embeddings, tf.argmax(dec_output, axis=-1))
+                    dec_input_ = tf.nn.embedding_lookup(self.embeddings, tf.argmax(dec_output, axis=-1))
                 self.output_ = tf.transpose(tf.stack(dec_outputs), [1, 0, 2])
 
             self.dec_seq_len = tf.count_nonzero(self.dec_output, 1, dtype=tf.int32)
@@ -94,6 +94,7 @@ class CompatibleRNNAutoencoder(object):
             batch_losses, output = in_session.run([self.loss_op, self.output_],
                                                   feed_dict={self.enc_input: enc_input,
                                                              self.dec_output: dec_output,
+                                                             self.embeddings: self.embedding_matrix, 
                                                              self.initial_dec_input: np.zeros((enc_input.shape[0], self.config['embedding_size']))})
             output_argmax = np.argmax(output, axis=-1)
             output_tokens = np.vectorize(self.vocab.__getitem__)(output_argmax)
@@ -102,6 +103,7 @@ class CompatibleRNNAutoencoder(object):
             _, batch_losses = in_session.run([self.train_op, self.loss_op],
                                              feed_dict={self.enc_input: enc_input,
                                                         self.dec_output: dec_output,
+                                                        self.embeddings: self.embedding_matrix,
                                                         self.initial_dec_input: np.zeros((enc_input.shape[0], self.config['embedding_size']))})
             return np.mean(batch_losses)
 
@@ -115,7 +117,8 @@ class CompatibleRNNAutoencoder(object):
 
     def initialize_from_w2v(self, in_w2v):
         # random at [-1.0, 1.0]
-        self.embedding_matrix = 2.0 * np.random.random((len(self.vocab), self.dim)).astype(np.float32) - 1.0
+        emb_size = self.config['embedding_size']
+        self.embedding_matrix = 2.0 * np.random.random((len(self.vocab), emb_size)).astype(np.float32) - 1.0
 
         if not in_w2v:
             return

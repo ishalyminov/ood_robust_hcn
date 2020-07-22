@@ -9,7 +9,7 @@ import tensorflow as tf
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from compatible_rnn_autoencoder import CompatibleRNNAutoencoder
-from utils.preprocessing import PAD, START, UNK, EOS, make_vocabulary, load_txt
+from utils.preprocessing import PAD, START, UNK, EOS, make_vocabulary, load_txt, make_autoencoder_dataset
 from utils.training_utils import batch_generator
 
 
@@ -82,9 +82,9 @@ def main(in_trainset_file, in_devset_file, in_testset_file, in_model_folder, in_
                                            special_tokens=[PAD, START, UNK, EOS])
     config['vocabulary_size'] = len(vocab)
 
-    train_enc_inp, _, train_dec_out, _ = make_variational_autoencoder_dataset(train_utterances, vocab, config['max_sequence_length'])
-    dev_enc_inp, _, dev_dec_out, _ = make_variational_autoencoder_dataset(dev_utterances, vocab, config['max_sequence_length'])
-    test_enc_inp, _, test_dec_out, _ = make_variational_autoencoder_dataset(test_utterances, vocab, config['max_sequence_length'])
+    train_enc_inp, train_dec_inp, train_dec_out = make_autoencoder_dataset(train_utterances, vocab, config['max_sequence_length'])
+    dev_enc_inp, train_dec_inp, dev_dec_out = make_autoencoder_dataset(dev_utterances, vocab, config['max_sequence_length'])
+    test_enc_inp, train_dec_inp, test_dec_out = make_autoencoder_dataset(test_utterances, vocab, config['max_sequence_length'])
 
     with tf.Session() as sess:
         ae = CompatibleRNNAutoencoder(config, rev_vocab)
