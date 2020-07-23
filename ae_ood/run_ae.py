@@ -8,32 +8,31 @@ import pandas as pd
 sys.path.append('..')
 
 from compatible_rnn_autoencoder import CompatibleRNNAutoencoder
-from utils.preprocessing import make_variational_autoencoder_dataset, load_txt
+from utils.preprocessing import make_autoencoder_dataset, load_txt
 from utils.training_utils import batch_generator
 
 
 def run_autoencoder(in_session, in_model, in_dataset, batch_size=64):
-    X, masks, labels = in_dataset
-    batch_gen = batch_generator((X, masks), batch_size)
+    batch_gen = batch_generator(in_dataset, batch_size)
     predictions = []
     for batch in batch_gen:
-        batch_predictions = in_model.predict(batch, in_session)
-        predictions += batch_predictions.tolist()
+        batch_losses, batch_outputs = in_model.step(*batch, in_session, forward_only=True)
+        predictions += batch_losses.tolist()
     return predictions
 
 
 def main(in_model_folder, in_dataset_file, in_result_file):
-    dev_utterances = load_txt(in_dataset_file)
+    utterances = load_txt(in_dataset_file)
 
-    utterances = list(map(lambda x: x.lower().split(), evalset.utterance))
     with tf.Session() as sess:
         ae = CompatibleRNNAutoencoder.load(in_model_folder, sess)
         rev_vocab, config = ae.vocab, ae.config
         vocab = {word: idx for idx, word in enumerate(rev_vocab)}
-        enc_inp, _, _, _ = make_variational_autoencoder_dataset(utterances, vocab, config['max_sequence_length'])
-        reconstruction_scores = run_autoencoder(sess, ae, enc_inp)
+        enc_inp, _, dec_out = make_autoencoder_dataset(utterances, vocab, config['max_sequence_length'])
+        reconstruction_scores = run_autoencoder(sess, ae, (enc_inp, dec_out))
     assert len(reconstruction_scores) == len(utterances)
-    result_df = pd.DataFrame({'utterance': evalset.utterance, 'ae_reconstruction_score': reconstruction_scores})
+    result_df = pd.DataFrame({'utterance': [' '.join(utterance) for utterance in utterances],
+                              'ae_reconstruction_score': reconstruction_scores})
     result_df.to_json(in_result_file)
 
 def configure_argument_parser():
@@ -47,4 +46,4 @@ def configure_argument_parser():
 if __name__ == '__main__':
     parser = configure_argument_parser()
     args = parser.parse_args()
-    main(args.model_folder, args.devset, args.evalset, args.decision_type)
+    main(args.model_folder, args.dataset, args.result_file)
