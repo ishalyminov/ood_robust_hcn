@@ -3,7 +3,6 @@ import sys
 
 import numpy as np
 import tensorflow as tf
-import pandas as pd
 
 sys.path.append('..')
 
@@ -31,9 +30,11 @@ def main(in_model_folder, in_dataset_file, in_result_file):
         enc_inp, _, dec_out = make_autoencoder_dataset(utterances, vocab, config['max_sequence_length'])
         reconstruction_scores = run_autoencoder(sess, ae, (enc_inp, dec_out))
     assert len(reconstruction_scores) == len(utterances)
-    result_df = pd.DataFrame({'utterance': [' '.join(utterance) for utterance in utterances],
-                              'ae_reconstruction_score': reconstruction_scores})
-    result_df.to_json(in_result_file)
+    result = {[' '.join(utterance): score
+               for utterance, score in zip(utterances, reconstruction_scores]}
+    with open(in_result_file, 'w') as result_out:
+        json.dump(result, result_out)
+
 
 def configure_argument_parser():
     result_parser = ArgumentParser(description='Run autoencoder reconstruction scores')

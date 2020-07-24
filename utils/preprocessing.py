@@ -201,6 +201,32 @@ def make_hcn_dataset(in_dialogs,
     return [tokens_padded, bow_padded, ctx_padded, action_masks_padded, prev_actions_padded, y_padded]
 
 
+def make_ae_hcn_dataset(in_dialogs,
+                        in_vocab,
+                        in_ctx_features_vocab,
+                        in_entity_tracker,
+                        max_input_length,
+                        max_sequence_length,
+                        **config):
+    dataset = make_hcn_dataset(in_dialogs,
+                               in_vocab,
+                               in_ctx_features_vocab,
+                               in_entity_tracker,
+                               max_input_length,
+                               max_sequence_length,
+                               **config)
+    ae_reconstruction_scores = np.zeros_like(dataset[0].shape[0])
+
+    utterance_idx = 0
+    for dialog_i in in_dialogs['dialogs']:
+        for turn in dialog_i['turns']:
+            if 'input' not in turns:
+                continue
+            ae_reconstruction_scores[utterance_idx] = turn['ae_reconstruction_score']
+            utterance_idx += 1
+    return dataset[:-1] + [ae_reconstruction_scores] + [dataset[-1]]
+
+
 def generate_dropout_turns(in_number, in_min_len, in_max_len, in_dialogs, in_vocab, in_word_dropout_prob):
     bow_encoder = BoW_encoder(in_vocab)
 
@@ -220,6 +246,17 @@ def generate_dropout_turns(in_number, in_min_len, in_max_len, in_dialogs, in_voc
         utterance_bows.append(bow_encoder.encode(' '.join(utterance_dropped_out)))
     return [tf.keras.preprocessing.sequence.pad_sequences(utterance_sequences, maxlen=in_max_len, padding='post'),
             np.array(utterance_bows)]
+
+def ae_hcn_generate_dropout_turns(in_number, in_min_len, in_max_len, in_dialogs, in_vocab, in_config):
+    dropout_turns = generate_dropout_turns(in_number,
+                                           in_min_len,
+                                           in_max_len,
+                                           in_dialogs,
+                                           in_vocab,
+                                           in_config['word_dropout_prob'])
+    alpha, beta = in_config['alpha'], in_config['beta']
+    fake_reconstruction_scores = alpha + (beta - alpha) * np.random.random(size=dropout_turns[0].shape[0])
+    return dropout_turns + [fake_reconstruction_scores]
 
 
 def generate_word_scramble_turns(in_number, in_min_len, in_max_len, in_dialogs, in_vocab, in_word_dropout_prob):
