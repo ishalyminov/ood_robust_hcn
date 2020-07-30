@@ -215,16 +215,11 @@ def make_ae_hcn_dataset(in_dialogs,
                                max_input_length,
                                max_sequence_length,
                                **config)
-    ae_reconstruction_scores = np.zeros_like(dataset[0].shape[0])
-
-    utterance_idx = 0
-    for dialog_i in in_dialogs['dialogs']:
-        for turn in dialog_i['turns']:
-            if 'input' not in turns:
-                continue
-            ae_reconstruction_scores[utterance_idx] = turn['ae_reconstruction_score']
-            utterance_idx += 1
-    return dataset[:-1] + [ae_reconstruction_scores] + [dataset[-1]]
+    ae_reconstruction_scores = np.zeros(dataset[0].shape[:-1])
+    for dialog_idx, dialog_i in enumerate(in_dialogs['dialogs']):
+        for turn_idx, turn in enumerate(dialog_i['turns']):
+            ae_reconstruction_scores[dialog_idx][turn_idx] = turn['ae_reconstruction_score']
+    return [dataset[0]] + dataset[2:-1] + [ae_reconstruction_scores] + [dataset[-1]]
 
 
 def generate_dropout_turns(in_number, in_min_len, in_max_len, in_dialogs, in_vocab, in_word_dropout_prob):

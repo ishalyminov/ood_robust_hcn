@@ -4,6 +4,7 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+from gensim.models import KeyedVectors
 
 sys.path.append('..')
 
@@ -21,10 +22,12 @@ class CompatibleRNNAutoencoder(object):
     VOCAB_NAME = 'vocab.txt'
     CONFIG_NAME = 'config.json'
 
-    def __init__(self, config, vocab, w2v=None):
+    def __init__(self, config, vocab):
         self.config = config
         self.vocab = vocab
-        self.initialize_from_w2v(w2v)
+        w2v_file = self.config.get('pretrained_embeddings')
+        w2v_vectors = KeyedVectors.load_word2vec_format(w2v_file) if w2v_file else None
+        self.initialize_from_w2v(w2v_vectors)
         self.build_graph(config, vocab)
 
     def build_graph(self, config, vocab):
@@ -42,8 +45,10 @@ class CompatibleRNNAutoencoder(object):
             with tf.variable_scope('encoder'):
                 self.enc_input = tf.placeholder(tf.int32, [None, max_sequence_length], name='enc_input')
                 self.dec_output = tf.placeholder(tf.int32, [None, max_sequence_length], name='dec_output')
-                self.embeddings = tf.placeholder(tf.float32, [vocabulary_size, embedding_size], name='emb')
                 # tf.Variable(tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0), name='emb')
+                self.embeddings = tf.Variable(self.embedding_matrix,
+                                              dtype=tf.float32,
+                                              name='emb')
                 emb = tf.nn.embedding_lookup(self.embeddings, self.enc_input)
                 self.enc_outputs, self.enc_state = tf.nn.dynamic_rnn(self._enc_cell, emb, dtype=tf.float32)
 
@@ -87,14 +92,16 @@ class CompatibleRNNAutoencoder(object):
                                                             average_across_timesteps=True,
                                                             average_across_batch=False)
             self.opt = getattr(tf.train, self.config['optimizer'])(self.config['learning_rate'])
-        self.train_op = self.opt.minimize(self.loss_op)
+        grads = self.opt.compute_gradients(self.loss_op)
+        grads_clipped = [(tf.clip_by_norm(grad, self.config['gradient_clipping_norm']), var)
+                         for grad, var in grads]
+        self.train_op = self.opt.apply_gradients(grads_clipped)
 
     def step(self, enc_input, dec_output, in_session, forward_only=False):
         if forward_only:
             batch_losses, output = in_session.run([self.loss_op, self.output_],
                                                   feed_dict={self.enc_input: enc_input,
                                                              self.dec_output: dec_output,
-                                                             self.embeddings: self.embedding_matrix, 
                                                              self.initial_dec_input: np.zeros((enc_input.shape[0], self.config['embedding_size']))})
             output_argmax = np.argmax(output, axis=-1)
             output_tokens = np.vectorize(self.vocab.__getitem__)(output_argmax)
@@ -103,7 +110,6 @@ class CompatibleRNNAutoencoder(object):
             _, batch_losses = in_session.run([self.train_op, self.loss_op],
                                              feed_dict={self.enc_input: enc_input,
                                                         self.dec_output: dec_output,
-                                                        self.embeddings: self.embedding_matrix,
                                                         self.initial_dec_input: np.zeros((enc_input.shape[0], self.config['embedding_size']))})
             return np.mean(batch_losses)
 
@@ -122,9 +128,9 @@ class CompatibleRNNAutoencoder(object):
 
         if not in_w2v:
             return
-        for word, idx in self.vocab.items():
+        for idx, word in enumerate(self.vocab):
             if word in in_w2v:
-                self.embedding_matrix[idx] = in_w2v_model[word]
+                self.embedding_matrix[idx] = in_w2v[word]
 
     @staticmethod
     def load(in_model_folder, in_session):

@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import sys
+import json
 
 import numpy as np
 import tensorflow as tf
@@ -7,7 +8,7 @@ import tensorflow as tf
 sys.path.append('..')
 
 from compatible_rnn_autoencoder import CompatibleRNNAutoencoder
-from utils.preprocessing import make_autoencoder_dataset, load_txt
+from utils.preprocessing import EOS, make_autoencoder_dataset, load_txt
 from utils.training_utils import batch_generator
 
 
@@ -30,8 +31,8 @@ def main(in_model_folder, in_dataset_file, in_result_file):
         enc_inp, _, dec_out = make_autoencoder_dataset(utterances, vocab, config['max_sequence_length'])
         reconstruction_scores = run_autoencoder(sess, ae, (enc_inp, dec_out))
     assert len(reconstruction_scores) == len(utterances)
-    result = {[' '.join(utterance): score
-               for utterance, score in zip(utterances, reconstruction_scores]}
+    result = {' '.join(utterance): score
+              for utterance, score in zip(utterances, reconstruction_scores)}
     with open(in_result_file, 'w') as result_out:
         json.dump(result, result_out)
 

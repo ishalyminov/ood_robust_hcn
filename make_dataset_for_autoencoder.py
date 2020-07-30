@@ -9,6 +9,7 @@ import pandas as pd
 
 from babi_tools.lib.babi import load_dataset 
 from babi_tools.ood_augmentation import load_ood
+from utils.preprocessing import load_hcn_json
 
 random.seed(273)
 np.random.seed(273)
@@ -22,16 +23,18 @@ def configure_argument_parser():
                                action='store_true',
                                help='Skip making an additional evalset with IND/OOD turns')
     result_parser.add_argument('--format', type=str, default='babi', help='babi/icassp')
-    result_parser.add_argument('--side', type=str, default='user', help='system/user')
     result_parser.add_argument('--unique_utterances', action='store_true', default=False)
     return result_parser
 
 
 def load_icassp_dataset(in_folder):
     result = []
-    for split_name in ['train', 'dev', 'test']:
-        split_dialogues = list(enumerate(load_icassp_json(os.path.join(in_folder, '{}.json'.format(split_name)))))
+    for split_name in ['train', 'dev', 'test', 'train_ood', 'dev_ood', 'test_ood']:
+        if not os.path.exists(os.path.join(in_folder, '{}.json'.format(split_name))):
+            continue
+        split_dialogues = list(enumerate(load_hcn_json(os.path.join(in_folder, '{}.json'.format(split_name)))['dialogs']))
         result.append(split_dialogues)
+    assert len(result) == 3
     return result
 
 
@@ -55,10 +58,10 @@ def save_txt(in_lines, in_dst_file_name):
             print(line, file=lines_out)
 
 
-def extract_agent_utterances(in_dialogues, in_agent_name, unique=False):
+def extract_utterances(in_dialogues, unique=False):
     utterances = []
     for dialogue_name, dialogue in in_dialogues:
-        utterances += list(map(itemgetter('text'), filter(lambda turn: turn.get('agent') == in_agent_name, dialogue)))
+        utterances += list(map(itemgetter('input'), dialogue['turns']))
     if unique:
         utterances = list(set(utterances))
     return utterances
@@ -69,7 +72,7 @@ def main(in_babi_folder, in_result_folder, in_args):
         dialogues = load_dataset(in_babi_folder, 'task6-dstc2')
     else:
         dialogues = load_icassp_dataset(in_babi_folder)
-    train, dev, test = list(map(lambda x: extract_agent_utterances(x, in_args.side, in_args.unique_utterances),
+    train, dev, test = list(map(lambda x: extract_utterances(x, in_args.unique_utterances),
                                 dialogues))
     if not os.path.exists(in_result_folder):
         os.makedirs(in_result_folder)

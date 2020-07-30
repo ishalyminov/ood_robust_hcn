@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.layers import xavier_initializer as xav
+from gensim.models import KeyedVectors
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
@@ -15,9 +16,14 @@ from .lstm_base import LSTMBase
 class AE_HCN(LSTMBase):
     def __init__(self, in_rev_vocab, in_config, in_feature_vector_size, in_action_size):
         self.rev_vocab = in_rev_vocab
-        super(AE_HCN, self).__init__(in_config, in_feature_vector_size, in_action_size) 
+        super(AE_HCN, self).__init__(in_rev_vocab, in_config, in_feature_vector_size, in_action_size) 
 
     def __graph__(self):
+        # entry points
+        input_words = tf.placeholder(tf.int32,
+                                     [None, self.max_input_length, self.max_sequence_length],
+                                     name='input_words')
+        # input_words_reshaped = tf.reshape(input_words, shape=[-1, self.max_sequence_length]) 
         input_contexts = tf.placeholder(tf.float32,
                                         [None, self.max_input_length, self.feature_vector_size],
                                         name='input_contexts')
@@ -25,14 +31,23 @@ class AE_HCN(LSTMBase):
         action_mask_ = tf.placeholder(tf.float32, [None, self.max_input_length, self.action_size], name='action_mask')
         action_seq_length = tf.count_nonzero(action_, -1)
 
-        ae_reconstruction_scores = tf.placeholder(tf.float32, [None, 1])
-        turn_features = tf.concat([tf.reshape(ae_turn_encodings, shape=[-1, self.max_input_length, self.config['embedding_size'] * 2]),
-                                   input_contexts],
-                                  axis=-1)
+        ae_reconstruction_scores = tf.placeholder(tf.float32, [None, self.max_input_length, 1])
+        turn_features = tf.concat([ae_reconstruction_scores, input_contexts], axis=-1)
 
+        w2v_file = self.config.get('pretrained_embeddings')
+        w2v_vectors = KeyedVectors.load_word2vec_format(w2v_file) if w2v_file else None
+        self.initialize_from_w2v(w2v_vectors)
+
+        # encoder
+        self.embeddings = tf.Variable(self.embedding_matrix,
+                                      dtype=tf.float32,
+                                      name='emb')
+        lookup_result = tf.nn.embedding_lookup(self.embeddings, input_words)
+        turn_meanvector_encodings = tf.reduce_mean(lookup_result, axis=2)
+        turn_features = tf.concat([turn_meanvector_encodings, ae_reconstruction_scores, input_contexts], axis=-1)
         # input projection
         Wi = tf.get_variable('Wi',
-                             shape=[self.feature_vector_size + self.nb_hidden * 2, self.nb_hidden],
+                             shape=[self.config['w2v_embedding_size'] + 1 + self.feature_vector_size, self.nb_hidden],
                              dtype=tf.float32,
                              initializer=xav())
         bi = tf.get_variable('bi',
@@ -72,18 +87,18 @@ class AE_HCN(LSTMBase):
                                                          targets=action_,
                                                          weights=sequence_mask,
                                                          average_across_batch=True)
-        # vae_loss = self.vae_nll_loss + self.vae_kl_w * self.vae_kl_loss
         loss = tf.reduce_mean(self.hcn_loss)
+        # vae_loss = self.vae_nll_loss + self.vae_kl_w * self.vae_kl_loss
         self.lr = tf.train.exponential_decay(self.config['learning_rate'],
                                              self.global_step,
                                              self.config.get('steps_before_decay', 0),
                                              self.config.get('learning_rate_decay', 1.0),
                                              staircase=True)
         optimizer = getattr(tf.train, self.config['optimizer'])(self.lr)
-        gradients, variables = zip(*optimizer.compute_gradients(loss))
-        # gradients, _ = tf.clip_by_global_norm(gradients, self.config['clip_norm'])
-        self.train_op = optimizer.apply_gradients(zip(gradients, variables),
-                                                  global_step=self.global_step)
+        grads = optimizer.compute_gradients(loss)
+        grads_clipped = [(tf.clip_by_norm(grad, self.config['clip_norm']), var)
+                        for grad, var in grads]
+        self.train_op = optimizer.apply_gradients(grads_clipped, global_step=self.global_step)
 
         # attach symbols to self
         self.loss = loss
@@ -93,47 +108,47 @@ class AE_HCN(LSTMBase):
         self.sequence_mask_ = sequence_mask
 
         # attach placeholders
+        self.input_words = input_words
         self.input_contexts = input_contexts
         self.action_ = action_
         self.action_mask_ = action_mask_
         self.ae_reconstruction_scores = ae_reconstruction_scores
 
-    # forward propagation
-    def forward(self, enc_inp, dec_inp, dec_out, bow_out, context_features, action_mask, y):
-        # forward
-        enc_inp_flattened = enc_inp.reshape(enc_inp.shape[0] * enc_inp.shape[1], enc_inp.shape[-1])
-        dec_inp_flattened = dec_inp.reshape(dec_inp.shape[0] * dec_inp.shape[1], dec_inp.shape[-1])
-        dec_out_flattened = dec_out.reshape(dec_out.shape[0] * dec_out.shape[1], dec_out.shape[-1])
-        bow_out_flattened = bow_out.reshape(bow_out.shape[0] * bow_out.shape[1], bow_out.shape[-1])
-        dec_seq_length = np.ones(dec_out_flattened.shape[0]) * dec_out_flattened.shape[1]
+    def initialize_from_w2v(self, in_w2v):
+        # random at [-1.0, 1.0]
+        emb_size = self.config['w2v_embedding_size']
+        self.embedding_matrix = 2.0 * np.random.random((len(self.vocab), emb_size)).astype(np.float32) - 1.0
 
-        probs, prediction, loss, hcn_loss, ae_loss = \
-            self.sess.run([self.probs, self.prediction, self.loss, self.hcn_loss, self.ae_loss],
-                          feed_dict={self.ae.X: enc_inp_flattened,
-                                     self.ae.initial_dec_input: np.zeros((dec_inp_flattened.shape[0], self.config['embedding_size'])),
-                                     self.input_contexts: context_features,
+        if not in_w2v:
+            return
+        for word, idx in self.vocab.items():
+            if word in in_w2v:
+                self.embedding_matrix[idx] = in_w2v[word]
+
+    # forward propagation
+    def forward(self, tokens, ctx, action_masks, prev_actions, ae_scores, y, y_weight):
+        # forward
+
+        probs, prediction, loss = \
+            self.sess.run([self.probs, self.prediction, self.loss],
+                          feed_dict={self.input_words: tokens,
+                                     self.input_contexts: ctx,
+                                     self.ae_reconstruction_scores: np.expand_dims(ae_scores, -1),
                                      self.action_: y,
-                                     self.action_mask_: action_mask})
-        return prediction, {'loss': np.ones_like(ae_loss) * loss,
-                            'hcn_loss': np.ones_like(ae_loss) * hcn_loss}
+                                     self.action_mask_: action_masks})
+        return prediction, {'loss': loss,
+                            'hcn_loss': loss}
 
     # training
-    def train_step(self, enc_inp, dec_inp, dec_out, bow_out, context_features, action_mask, y):
-        enc_inp_flattened = enc_inp.reshape(enc_inp.shape[0] * enc_inp.shape[1], enc_inp.shape[-1])
-        dec_inp_flattened = dec_inp.reshape(dec_inp.shape[0] * dec_inp.shape[1], dec_inp.shape[-1])
-        dec_out_flattened = dec_out.reshape(dec_out.shape[0] * dec_out.shape[1], dec_out.shape[-1])
-        bow_out_flattened = bow_out.reshape(bow_out.shape[0] * bow_out.shape[1], bow_out.shape[-1])
-        dec_seq_length = np.ones(dec_out_flattened.shape[0]) * dec_out_flattened.shape[1]
-
-        _, loss, hcn_loss, ae_loss, lr = \
-            self.sess.run([self.train_op, self.loss, self.hcn_loss, self.ae_loss, self.lr],
-                          feed_dict={self.ae.X: enc_inp_flattened,
-                                     self.ae.initial_dec_input: np.zeros((dec_inp_flattened.shape[0], self.config['embedding_size'])),
-                                     self.input_contexts: context_features,
-                                     self.action_: y,
-                                     self.action_mask_: action_mask})
+    def train_step(self, tokens, ctx, action_masks, prev_actions, ae_scores, y, y_weight):
+        _, loss, lr = self.sess.run([self.train_op, self.loss, self.lr],
+                                    feed_dict={self.input_words: tokens,
+                                               self.input_contexts: ctx,
+                                               self.ae_reconstruction_scores: np.expand_dims(ae_scores, -1),
+                                               self.action_: y,
+                                               self.action_mask_: action_masks})
         # maintain state
-        return ({'loss': np.ones_like(ae_loss) * loss,
-                 'hcn_loss': np.ones_like(ae_loss) * hcn_loss},
+        return ({'loss': loss,
+                 'hcn_loss': loss},
                 lr)
 

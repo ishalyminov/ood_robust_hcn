@@ -8,6 +8,8 @@
   "rnn_cell": "GRUCell",
   "learning_rate": 0.001,
   "nb_epoch": 10000,
-  "batch_size": 32,
-  "early_stopping_threshold": 10
+  "batch_size": 16,
+  "gradient_clipping_norm": 5,
+  "early_stopping_threshold": 10,
+  "pretrained_embeddings": "../hcn/data/glove.6B.100d.w2v.txt"
 }

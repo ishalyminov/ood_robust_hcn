@@ -7,4 +7,4 @@ from .dialog_level_lstm_multi import MultitaskDialogLevelLSTM
 from .convolutional_dialog_level_lstm_multi import MultitaskConvolutionalDialogLevelLSTM
 from .convolutional_dialog_level_lstm import ConvolutionalDialogLevelLSTM
 from .gated_convolutional_meanvector_lstm import GatedConvolutionalMeanvectorLSTM
-
+from .ae_hcn import AE_HCN

@@ -24,7 +24,7 @@ def evaluate_single_run(in_model, in_dataset):
     for batch in batch_gen:
         batch_predictions, batch_loss_dict = in_model.forward(*batch)
         for key, value in batch_loss_dict.items():
-            loss_dict[key] += value.tolist()
+            loss_dict[key].append(value)
         predictions += batch_predictions.flatten().tolist()
     y = in_dataset[-2]
     return (sum([gold_i == pred_i and gold_i != PAD_ID for gold_i, pred_i in zip(y.flatten(), predictions)]) / np.sum(list(map(lambda x: int(x != 0), y.flatten()))),
@@ -51,7 +51,7 @@ def evaluate_advanced_single(in_model, in_dataset, in_action_templates, in_fallb
     batch_gen = batch_generator(in_dataset, 64)
     for batch in batch_gen:
         batch_predictions, batch_loss_dict = in_model.forward(*batch)
-        losses += batch_loss_dict['loss'].tolist()
+        losses.append(batch_loss_dict['loss'])
         predictions += batch_predictions.tolist()
 
     y = in_dataset[-2]

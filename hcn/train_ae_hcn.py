@@ -5,6 +5,7 @@ import os
 from argparse import ArgumentParser
 import random
 import sys
+import copy
 
 import numpy as np
 import tensorflow as tf
@@ -34,17 +35,16 @@ def augment_dataset_with_ae_reconstruction_scores(in_dataset, in_ae_score_map):
     result = copy.deepcopy(in_dataset)
     for dialogue in result['dialogs']:
         for utterance in dialogue['turns']:
-            if 'input' in utterance:
-                ae_score = in_ae_score_map.get(utterance['input']['text'].strip(), 0.0)
-                if ae_score == 0.0:
-                    print('No reconstruction score for {}'.format(utterance['input']['text']))
-                utterance['input']['ae_reconstruction_score'] = ae_score
+            ae_score = in_ae_score_map.get(' '.join(utterance['input'].split()), None)
+            if ae_score is None:
+                print('No reconstruction score for {}'.format(utterance['input']))
+            utterance['ae_reconstruction_score'] = ae_score
     return result
 
 
 def extract_alpha_beta_scores(in_ae_score_map, in_config):
-    alpha = max(in_ae_score_map.values())
-    assert alpha < in_config['beta'], 'beta reconstruction score parameter must be higher that {:.3f}.format(alpha)'
+    alpha = np.percentile(list(in_ae_score_map.values()), 99)
+    assert alpha < in_config['beta'], 'beta reconstruction score parameter must be higher that {:.3f}'.format(alpha)
     return alpha, in_config['beta']
 
 
@@ -54,13 +54,16 @@ def main(in_dataset_folder, in_noisy_dataset_folder, in_custom_vocab_file, in_mo
     train_json = load_hcn_json(os.path.join(in_dataset_folder, 'train.json'))
     with open(os.path.join(in_dataset_folder, 'train_ae_reconstruction_scores.json')) as train_ae_in:
         train_ae_scores_json = json.load(train_ae_in)
+    train_json = augment_dataset_with_ae_reconstruction_scores(train_json, train_ae_scores_json)
     dev_json = load_hcn_json(os.path.join(in_dataset_folder, 'dev.json'))
     with open(os.path.join(in_dataset_folder, 'dev_ae_reconstruction_scores.json')) as dev_ae_in:
         dev_ae_scores_json = json.load(dev_ae_in)
+    dev_json = augment_dataset_with_ae_reconstruction_scores(dev_json, dev_ae_scores_json)
     # test_json = load_hcn_json(os.path.join(in_dataset_folder, 'test.json'))
     test_ood_json = load_hcn_json(os.path.join(in_noisy_dataset_folder, 'test_ood.json'))
-    with open(os.path.join(in_noisy_dataset_folder, 'test_ae_reconstruction_scores.json')) as test_ae_in:
-        test_ae_scores_json = json.load(test_ae_in)
+    with open(os.path.join(in_noisy_dataset_folder, 'test_ood_ae_reconstruction_scores.json')) as test_ae_in:
+        test_ood_ae_scores_json = json.load(test_ae_in)
+    test_ood_json = augment_dataset_with_ae_reconstruction_scores(test_ood_json, test_ood_ae_scores_json)
 
     kb = make_augmented_knowledge_base(os.path.join(BABI_FOLDER, 'dialog-babi-task6-dstc2-kb.txt'),
                                        os.path.join(BABI_FOLDER, 'dialog-babi-task6-dstc2-candidates.txt'))

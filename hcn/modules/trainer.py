@@ -15,7 +15,16 @@ with open(DEFAULT_CONFIG_FILE) as babi_config_in:
 
 
 class Trainer(object):
-    def __init__(self, in_train, in_dev, in_test, in_action_templates, in_random_input, in_post_ood_turns_noisy, in_config, in_model, in_model_folder):
+    def __init__(self,
+                 in_train,
+                 in_dev,
+                 in_test,
+                 in_action_templates,
+                 in_random_input,
+                 in_post_ood_turns_noisy,
+                 in_config,
+                 in_model,
+                 in_model_folder):
         self.config = in_config
         self.model_folder = in_model_folder
         self.batch_size = in_config['batch_size']
@@ -57,11 +66,12 @@ class Trainer(object):
         return result
  
     def drop_out_batch(self, in_batch):
-        X, bow_output, context_features, action_masks, prev_action, y, y_weight = in_batch
+        X, context_features, action_masks, prev_action, ae_reconstruction_scores, y, y_weight = in_batch
         num_turns = np.sum(np.vectorize(lambda x: x!= 0)(y))
         word_dropout_prob = self.config.get('word_dropout_ratio', 0.0)
         random_input_prob = self.config.get('random_input_prob', 0.0)
         unk_action_id = len(self.action_templates) - 1 
+        ae_fake_score_lower, ae_fake_score_upper = self.config['alpha'], self.config['beta']
         for idx in range(num_turns):
             for i in range(self.config['max_sequence_length']):
                 if X[0][idx][i] == 0:
@@ -73,8 +83,9 @@ class Trainer(object):
                 random_input_idx = np.random.choice(range(self.random_input[0].shape[0]))
                 random_input = [random_input_i[random_input_idx] for random_input_i in self.random_input]
                 X[0][idx] = random_input[0]
-                bow_output[0][idx] = random_input[1]
                 y[0][idx] = unk_action_id
+                ae_reconstruction_scores[0][idx] = \
+                    ae_fake_score_lower + (ae_fake_score_upper - ae_fake_score_lower) * np.random.random()
                 y_weight[0][idx] = self.action_weights[unk_action_id]
                 if idx + 1 < num_turns:
                     prev_action[0][idx + 1] = unk_action_id
